@@ -3,7 +3,7 @@
 *=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*
 Author: Zack
 Create Date: 2025/7/16
-Description:  进度条组件，注意不要嵌套元任务，遍历完成时间少于0.01s的任务列表将会使终端io无法跟上完成任务导致控制台字符串滞留造成内存泄漏
+Description:  Simple ProgressBar
 *=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*
 """
 import asyncio
@@ -26,7 +26,6 @@ class ProgressBar:
     ]
 
     def __init__(self, data: Iterable, body: str = "", head: str = "", scale: int = 1, track: bool = True, text: str = ""):
-
         self.data = data
         self.body_pattern = body
         self.head_pattern = head
@@ -98,7 +97,6 @@ class ProgressBar:
             iterable = self.data
 
         for index, item in enumerate(iterable):
-            # 文本生成逻辑（与同步模式一致）
             if isinstance(item, tuple):
                 tar_text = self.text
                 for param_index, replacement in enumerate(re.findall(r'\$[1-2]', self.text)):
@@ -110,50 +108,22 @@ class ProgressBar:
                 if match:
                     tar_text = self.text.replace(match.group(), str(item))
 
-            # 计时和速度计算逻辑（与同步模式一致）
             if index % max(1, int(len(self.data) * self.timer_sleep)) == 0 and self.timer is None:
                 self.timer = time.perf_counter()
             elif self.timer is not None:
                 self._pattern_instance.set_speed(1 / (time.perf_counter() - self.timer))
                 self.timer = None
 
-            # 进度跟踪输出（与同步模式一致）
             if self.track:
                 print(
                     f"{self._pattern_instance.make_progress()} {self._pattern_instance.get_speed():.2f}/s | {tar_text}",
                     end="")
 
             yield item
-            await asyncio.sleep(0)  # 关键点：保持异步特性
+            await asyncio.sleep(0)
 
-        # 最终进度完成标记（与同步模式一致）
         if self.track:
             print(
                 f"{self._pattern_instance.make_progress(final=True)} {self._pattern_instance.get_speed():.2f}/s | {self.generate_text()}",
                 end="")
         self._pattern_instance.finished_progress()
-
-
-
-
-def exsub(item):
-    time.sleep(random.uniform(0, 1))
-
-
-def sub(item):
-    with ThreadPoolExecutor(max_workers=4) as w:
-        tasks = [exsub(v) for k, v in ProgressBar({'a': 1, 'b': 2, 'c': 3, 'd': 4}.items(), text="正在处理值$1")]
-
-
-async def async_sub():
-    for i in ProgressBar(range(20), text="正在处理值$1"):
-        await asyncio.sleep(random.uniform(1, 2))
-
-if __name__ == "__main__":
-    # for k, v in ProgressBar({'a': 1, 'b': 2}.items(), text='1正在处理值$1'):
-    #     for k2, v2 in ProgressBar({'a': 1, 'b': 2}.items(), text='2正在处理值$1'):
-    #         for k3, v3 in ProgressBar({'a': 1, 'b': 2}.items(), text='3正在处理值$1'):
-    #             time.sleep(2)
-    # with ProcessPoolExecutor(max_workers=3) as p:
-    #     tasks = [sub(i) for i in ProgressBar(range(10), text="1正在处理$1")]
-    asyncio.run(async_sub())
