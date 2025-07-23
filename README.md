@@ -4,7 +4,7 @@ Simple Progress Bar initialize immediately.
 Usage:
 
 ```Python
-toggle when iterated:
+triggered when iterating:
 [ i for i in ProgressBar(range(20))]
 or
 for i in ProgressBar(range(10)):
