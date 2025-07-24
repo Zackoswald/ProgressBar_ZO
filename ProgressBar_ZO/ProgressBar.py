@@ -10,7 +10,7 @@ import asyncio
 import time
 import random
 import re
-from ._utils.ProgressShareInstance import ProgressShareInstance
+from _utils.ProgressShareInstance import ProgressShareInstance
 from concurrent.futures import ThreadPoolExecutor
 from collections.abc import Iterable
 
@@ -25,7 +25,7 @@ class ProgressBar:
         {'body': '~', 'head': '>'}
     ]
 
-    def __init__(self, data: Iterable, body: str = "", head: str = "", scale: int = 1, track: bool = True, text: str = ""):
+    def __init__(self, data: Iterable, body: str = "", head: str = "", scale: float = 0, track: bool = True, text: str = ""):
         self.data = data
         self.body_pattern = body
         self.head_pattern = head
@@ -62,7 +62,6 @@ class ProgressBar:
             if match:
                 self._pattern_instance.append_text(self.text.replace(match.group(), str(item)))
         tar_text = ' | '.join(self._pattern_instance.get_text_stack())
-        # self._pattern_instance.pop_text() if not last and len(self._pattern_instance.get_text_stack()) != 0 else [self._pattern_instance.pop_text() for _ in range(2)]
         return tar_text
 
     def _sync_iter(self):
@@ -72,9 +71,6 @@ class ProgressBar:
             iterable = self.data
 
         for index, item in enumerate(iterable):
-            # print(self._pattern_instance.get_text_stack())
-            # if len(self._pattern_instance.get_text_stack()) != 0:
-            #     self._pattern_instance.pop_text()
             if index % max(1, int(len(self.data) * self.timer_sleep)) == 0 and self.timer is None:
                 self.timer = time.perf_counter()
             elif self.timer is not None:

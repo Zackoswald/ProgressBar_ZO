@@ -10,6 +10,7 @@ import threading
 from typing import List, Dict, Union
 from contextvars import ContextVar
 import traceback
+from ProgressBar_ZO._exceptions.ScaleResetException import ScaleResetException
 
 progress_context: ContextVar[List[dict]] = ContextVar("progress_context", default=[])
 
@@ -33,14 +34,14 @@ def safe_single_instance(cls):
 class ProgressShareInstance:
     def __init__(self, *args, **kwargs):
         self._lock = threading.RLock()
-        self.scale = 1
         self.speed = 0
+        self.scale = 1
+        self.scale_flag = False
         self._init_instance(*args, **kwargs)
         self.text_stack = []
 
-    def _init_instance(self, scale=1):
-        self.scale = scale
-        self.spare_space = 100 / self.scale
+    def _init_instance(self):
+        self.spare_space = 100
 
     @property
     def progress_dict(self) -> List[dict]:
@@ -65,18 +66,19 @@ class ProgressShareInstance:
             traceback.print_exc()
 
     def _refresh(self, final=False):
-        _str = f"\r |"
-        space = self.spare_space
-        records = self.progress_dict
-        for index, item in enumerate(records):
-            strip = (space / self.scale) * ((item['count'] - 1) / item['total']) if index != len(records) - 1 else (space / self.scale) * (item['count'] / item['total'])
-            item['strip'] = strip
-            space -= strip
-            _str += item['body'] * int(strip)
-        _str += records[-1]['head']
-        _str += " " * int((100 - sum([int(item['strip']) for item in records])) / self.scale)
-        _str += f"|  {records[-1]['count'] / records[-1]['total'] * 100 :.2f}%  "
-        return _str
+        left_space = self.spare_space * self.scale
+        _str = [f"\r | "]
+        for index, item in enumerate(self.progress_dict):
+            self.progress_dict[index]['percentage'] = (item['count'] - 1) / item['total'] if index != len(self.progress_dict) - 1 else item['count'] / item['total']
+            self.progress_dict[index]['strip'] = left_space * self.progress_dict[index]['percentage']
+            left_space = (1 - self.progress_dict[index]['percentage']) * left_space
+            _str.append(self.progress_dict[index]['body'] * int(self.progress_dict[index]['strip']))
+        _str.append(self.progress_dict[-1]['head'])
+        _str.append(int(left_space) * " ")
+        _str.append(f"|  {self.progress_dict[-1]['count'] / self.progress_dict[-1]['total'] * 100 :.2f}%  ")
+        return "".join(_str)
+
+
 
     def finished_progress(self):
         with self._lock:
@@ -96,7 +98,11 @@ class ProgressShareInstance:
         return self.speed
 
     def set_scale(self, scale):
-        self.scale = scale
+        if not self.scale_flag:
+            self.scale = scale
+            self.scale_flag = True
+        # else:
+        #     raise ScaleResetException(self.scale, scale)
 
     def get_scale(self):
         return self.scale
